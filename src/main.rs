@@ -7,24 +7,39 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
 };
 
-fn main() {
-    println!("Hello, world!");
+enum Role {
+    Server,
+    Client,
+}
 
+fn main() {
     let args: Vec<String> = env::args().collect();
-    let mode = args[1].as_str();
+    let role = match args[1].as_str() {
+        "s" | "server" => {
+            println!("|| server ||");
+            Role::Server
+        }
+        "c" | "client" => {
+            println!("|| client ||");
+            Role::Client
+        }
+        _ => {
+            panic!("invalid arg.");
+        }
+    };
 
     let host = "127.0.0.1";
     let port = 8080;
 
     let socket = Socket::new(host, port);
 
-    match mode {
-        "read" => {
+    match role {
+        Role::Server => {
             let mut msg = String::new();
             socket.read(&mut msg);
             println!("{}", msg);
         }
-        "send" => {
+        Role::Client => {
             socket.send("hoge");
         }
         _ => {
@@ -62,7 +77,7 @@ impl Socket {
         let mut tcp_stream = TcpStream::connect(&self.addr).expect("can't connet.");
 
         tcp_stream.set_nonblocking(false).expect("out of service.");
-        println!("// connect server // ");
+        println!("succeeded in connecting server.");
         let msg = msg.as_bytes();
 
         tcp_stream.write_all(msg).expect("can't send msg.");
