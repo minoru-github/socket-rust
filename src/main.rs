@@ -4,7 +4,7 @@ use std::{
     io::Error,
     io::{BufRead, BufWriter, ErrorKind, Write},
     io::{BufReader, Result},
-    net::{SocketAddr, TcpStream, ToSocketAddrs},
+    net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
 };
 
 fn main() {
@@ -13,18 +13,19 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let mode = args[1].as_str();
 
-    let host = "localhost";
-    let port = 3000;
+    let host = "127.0.0.1";
+    let port = 8080;
 
     let socket = Socket::new(host, port);
-    let tcp_strem = socket.connect().expect("can't connect");
 
     match mode {
         "read" => {
-            socket.read(tcp_strem);
+            let mut msg = String::new();
+            socket.read(&mut msg);
+            println!("{}", msg);
         }
         "send" => {
-            socket.send(tcp_strem, "hoge");
+            socket.send("hoge");
         }
         _ => {
             panic!("invalid arg")
@@ -36,49 +37,36 @@ fn main() {
 struct Socket {
     host: &'static str,
     port: usize,
-    addr_ipv4: Option<SocketAddr>,
+    addr: String,
 }
 
 impl Socket {
     fn new(host: &'static str, port: usize) -> Self {
-        let host_and_port = format!("{}:{}", host, port);
-        let mut addr = host_and_port.to_socket_addrs().unwrap();
-
-        let addr_ipv4 = if let Some(addr) = addr.find(|&x| x.is_ipv4()) {
-            Some(addr)
-        } else {
-            None
-        };
-
-        Socket {
-            host,
-            port,
-            addr_ipv4,
-        }
+        let addr = format!("{}:{}", host, port);
+        Socket { host, port, addr }
     }
 
-    fn connect(&self) -> Result<TcpStream> {
-        if let Some(addr) = self.addr_ipv4 {
-            TcpStream::connect(addr)
-        } else {
-            let error = Error::from(ErrorKind::AddrNotAvailable);
-            Err(error)
-        }
+    fn read(&self, msg: &mut String) {
+        let tcp_listener = TcpListener::bind(&self.addr).expect("can't bind.");
+        let (mut stream, _) = tcp_listener.accept().expect("can't accept.");
+
+        self.read_stream(&mut stream, msg);
     }
 
-    fn read(&self, tcp_stream: TcpStream) {
-        let mut reader = BufReader::new(&tcp_stream);
-
-        let mut msg = String::new();
-        reader.read_line(&mut msg).expect("can't receive");
-        println!("{}", msg);
+    fn read_stream(&self, stream: &mut TcpStream, msg: &mut String) {
+        let mut reader = BufReader::new(stream);
+        reader.read_line(msg).expect("can't receive.");
     }
 
-    fn send(&self, tcp_stream: TcpStream, comment: &str) {
+    fn send(&self, msg: &str) {
+        let mut tcp_stream = TcpStream::connect(&self.addr).expect("can't connet.");
+
+        tcp_stream.set_nonblocking(false).expect("out of service.");
+        println!("// connect server // ");
+        let msg = msg.as_bytes();
+
+        tcp_stream.write_all(msg).expect("can't send msg.");
+
         let mut writer = BufWriter::new(&tcp_stream);
-
-        let msg = format!("message: {}", comment);
-        writer.write(msg.as_bytes()).expect("can't write");
-        writer.flush().unwrap();
     }
 }
