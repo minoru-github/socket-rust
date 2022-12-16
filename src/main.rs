@@ -43,7 +43,18 @@ fn decide_to_role(arg: &str) -> Role {
     }
 }
 
-#[derive(Clone, Copy)]
+#[test]
+fn test_decide_to_role() {
+    let arg = "c";
+    let role = decide_to_role(arg);
+    assert_eq!(role, Role::Client);
+
+    assert_eq!(decide_to_role("s"), Role::Server);
+    assert_eq!(decide_to_role("client"), Role::Client);
+    assert_eq!(decide_to_role("server"), Role::Server);
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Role {
     Server,
     Client,
