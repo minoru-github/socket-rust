@@ -7,7 +7,28 @@ use std::{
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let role = match args[1].as_str() {
+
+    let role = decide_to_role(args[1].as_str());
+
+    let host = "127.0.0.1";
+    let port = 8080;
+
+    match role {
+        Role::Server => {
+            let mut server = TcpStream::new(host, port, role);
+            let mut msg = String::new();
+            server.read(&mut msg);
+            println!("{}", msg);
+        }
+        Role::Client => {
+            let mut client = TcpStream::new(host, port, role);
+            client.send("hoge");
+        }
+    }
+}
+
+fn decide_to_role(arg: &str) -> Role {
+    match arg {
         "s" | "server" => {
             println!("|| server ||");
             Role::Server
@@ -19,22 +40,6 @@ fn main() {
         _ => {
             panic!("invalid arg.");
         }
-    };
-
-    let host = "127.0.0.1";
-    let port = 8080;
-
-    let mut socket = Socket::new(host, port, role);
-
-    match role {
-        Role::Server => {
-            let mut msg = String::new();
-            socket.read(&mut msg);
-            println!("{}", msg);
-        }
-        Role::Client => {
-            socket.send("hoge");
-        }
     }
 }
 
@@ -44,38 +49,34 @@ enum Role {
     Client,
 }
 
-#[derive(Debug)]
-struct Socket {
-    stream: TcpStream,
+trait Stream {
+    fn new(host: &'static str, port: usize, role: Role) -> Self;
+    fn read(&mut self, msg: &mut String);
+    fn send(&mut self, msg: &str);
 }
 
-impl Socket {
+impl Stream for TcpStream {
     fn new(host: &'static str, port: usize, role: Role) -> Self {
         let addr = format!("{}:{}", host, port);
 
-        let stream = match role {
+        match role {
             Role::Server => {
-                let tcp_listener = TcpListener::bind(addr.clone()).expect("can't bind.");
+                let tcp_listener = TcpListener::bind(addr).expect("can't bind.");
                 let (tcp_stream, _) = tcp_listener.accept().expect("can't accept.");
                 tcp_stream
             }
-            Role::Client => TcpStream::connect(addr.clone()).expect("can't connet."),
-        };
-        Socket {
-            stream,
+            Role::Client => TcpStream::connect(addr).expect("can't connet."),
         }
     }
-
     fn read(&mut self, msg: &mut String) {
-        let mut reader = BufReader::new(&mut self.stream);
+        let mut reader = BufReader::new(self);
         reader.read_line(msg).expect("can't receive.");
     }
-
     fn send(&mut self, msg: &str) {
-        self.stream.set_nonblocking(false).expect("out of service.");
+        self.set_nonblocking(false).expect("out of service.");
         println!("succeeded in connecting server.");
 
         let msg = msg.as_bytes();
-        self.stream.write_all(msg).expect("can't send msg.");
+        self.write_all(msg).expect("can't send msg.");
     }
 }
