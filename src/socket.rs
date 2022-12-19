@@ -3,7 +3,6 @@ use std::{
     io::{BufRead, Write},
     net::{TcpListener, TcpStream},
 };
-
 pub fn create_ip_address(host: &'static str, port: usize) -> String {
     // TODO IPV4,IPV6以外はエラーにする
     format!("{}:{}", host, port)
@@ -19,7 +18,7 @@ fn test_create_ip_address() {
     assert_eq!(create_ip_address("0.0.0.0", 1), "0.0.0.0:1");
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role {
     Server,
     Client,
@@ -54,21 +53,19 @@ fn test_decide_to_role() {
     assert_eq!(Role::decide("server"), Role::Server);
 }
 
-pub trait ReadWrite {
-    fn read(&mut self, msg: &mut String);
-    fn send(&mut self, msg: &str);
+pub trait TcpMessage {
+    fn read_msg(&mut self, msg: &mut String);
+    fn send_msg(&mut self, msg: &str);
 }
 
-impl ReadWrite for TcpStream {
-    fn read(&mut self, msg: &mut String) {
+impl TcpMessage for TcpStream {
+    fn read_msg(&mut self, msg: &mut String) {
         let mut reader = BufReader::new(self);
         reader.read_line(msg).expect("can't receive.");
     }
-    fn send(&mut self, msg: &str) {
-        // TODO nonblockingが何してるか調べる
-        self.set_nonblocking(false).expect("out of service.");
-        println!("succeeded in connecting server.");
-
+    fn send_msg(&mut self, msg: &str) {
+        // 送るmsg の最後に改行の\nつけて、read側はread_lineで改行まで読み込ませる。
+        let msg = msg.to_string() + "\n";
         let msg = msg.as_bytes();
         self.write_all(msg).expect("can't send msg.");
     }
@@ -91,6 +88,8 @@ pub struct Client {
 impl Client {
     pub fn new(address: String) -> Self {
         let tcp_stream = TcpStream::connect(address).expect("can't connet.");
+        // TODO nonblockingが何してるか調べる
+        //tcp_stream.set_nonblocking(true).expect("out of service.");
         Client { tcp_stream }
     }
 }

@@ -2,6 +2,8 @@ use std::env;
 mod socket;
 use socket::*;
 
+use trial::*;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -14,14 +16,41 @@ fn main() {
 
     match role {
         Role::Server => {
-            let mut server = Server::new(address);
-            let mut msg = String::new();
-            server.tcp_stream.read(&mut msg);
-            println!("{}", msg);
+            server_func(address);
         }
         Role::Client => {
-            let mut client = Client::new(address);
-            client.tcp_stream.send("hoge");
+            client_func(address);
         }
+    }
+}
+
+mod trial {
+    use std::net::TcpStream;
+    use super::*;
+
+    pub fn server_func(address: String) {
+        let mut server = Server::new(address);
+        loop {
+            read(&mut server.tcp_stream);
+
+            let msg = "thank you for your msg!";
+            server.tcp_stream.send_msg(msg);
+        }
+    }
+
+    pub fn client_func(address: String) {
+        let mut client = Client::new(address);
+        loop {
+            let msg = "hoge";
+            client.tcp_stream.send_msg(msg);
+
+            read(&mut client.tcp_stream);
+        }
+    }
+
+    fn read(tcp_stream: &mut TcpStream) {
+        let mut msg = String::new();
+        tcp_stream.read_msg(&mut msg);
+        println!("received msg: {}", msg);
     }
 }
