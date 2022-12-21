@@ -18,8 +18,8 @@
 flowchart TD;
     subgraph socket-rust
     start ---> decide_role;
-    decide_role --->|Client| client;
-    decide_role --->|Server| server;
+    decide_role -- Client ---> client;
+    decide_role -- Server ---> server;
 
     subgraph server
     server_start[start] -->|socket| bind;
