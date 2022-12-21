@@ -17,9 +17,10 @@
 ```mermaid
 flowchart TD;
     subgraph socket-rust
-    start ---> decide_role;
-    decide_role -- Client ---> client;
-    decide_role -- Server ---> server;
+    start --> parse_args;
+    parse_args -->|String| decide_role;
+    decide_role ---> client;
+    decide_role ---> server;
 
     subgraph server
     server_start[start] -->|socket| bind;
